@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SSE recovery failure demo</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#141723;color:#edf0ff}body{max-width:1000px;margin:3rem auto;padding:0 1.4rem;line-height:1.55}h1{font-size:1.9rem;margin-bottom:.4rem}p{color:#b8c1d6}button,input{font:inherit}button{background:#283247;color:#f2f5ff;border:1px solid #50607c;border-radius:.5rem;padding:.6rem .8rem;cursor:pointer}button:hover{background:#35435d}button:focus-visible{outline:3px solid #98b5ff;outline-offset:3px}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1.1rem 0}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem}.metric{background:#202636;padding:1rem;border-radius:.6rem}.metric strong{display:block;font-size:1.8rem}#state{font-size:1.3rem}.mono{font-family:ui-monospace,monospace;overflow-wrap:anywhere}pre{background:#0b0e17;border:1px solid #303b52;border-radius:.6rem;padding:1rem;overflow:auto;max-height:25rem;font-size:.84rem}a{color:#b9cfff}.note{border-left:3px solid #a3b8f8;padding-left:1rem}@media(max-width:600px){.metrics{grid-template-columns:1fr}body{margin-top:1.4rem}}@media(prefers-reduced-motion:no-preference){button{transition:background .15s}}
+  </style>
+  <script type="importmap">{"imports":{"eventsource-parser":"/vendor/index.js"}}</script>
+</head>
+<body>
+  <h1>SSE recovery failure demo</h1>
+  <p>Two HTTP relay listeners share one retained log. Process a counter, break the connection, replay missed events, then recover from an expired cursor using an application snapshot.</p>
+  <div class="metrics" aria-live="polite">
+    <div class="metric">Session<strong id="state">idle</strong></div>
+    <div class="metric">Application counter<strong id="value">0</strong></div>
+    <div class="metric">Handler calls / duplicate IDs<strong id="effects">0 / 0</strong></div>
+  </div>
+  <div class="controls">
+    <button id="start">Start / reconnect</button>
+    <button id="publish">Publish one</button>
+    <button id="drop">Disconnect + publish three</button>
+    <button id="checkpoint">Fail next checkpoint + publish</button>
+    <button id="expire">Offline + expire history</button>
+    <button id="snapshot">Apply snapshot + resume</button>
+    <button id="logout">Logout / clear cursor</button>
+  </div>
+  <p class="mono">Committed cursor: <span id="cursor">none</span></p>
+  <p class="note">History retains eight events. “Offline + expire history” must end in resync. “Apply snapshot + resume” installs application state and its matching cursor, then starts a new session. Checkpoint failure intentionally repeats a handler effect; the counter uses idempotent assignment.</p>
+  <h2>Observable events</h2>
+  <pre id="log" aria-label="Event log"></pre>
+  <p>Loopback-only reference demo. The bearer token is a fixed demo value. Both relays use the same in-memory object; restart loses history. Production authentication, durable history and application integration are outside this demo.</p>
+  <script type="module" src="/demo.js"></script>
+</body>
+</html>

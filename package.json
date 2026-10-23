@@ -1,0 +1,52 @@
+{
+  "name": "browser-sse-relay",
+  "version": "0.1.0",
+  "description": "Scoped SSE recovery with commit-after-handler checkpoints and a retained-history reference relay",
+  "type": "module",
+  "license": "MIT",
+  "author": "Aleksandr Kashevarov",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/59Alex/browser-sse-relay.git"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "README.ru.md",
+    "ROADMAP.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "demo": "npm run build && node demo/server.mjs",
+    "prepack": "npm run build",
+    "test:browser": "npm run build && node scripts/browser-smoke.mjs",
+    "test:package": "node scripts/package-smoke.mjs"
+  },
+  "dependencies": {
+    "eventsource-parser": "4.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "playwright": "1.64.1",
+    "typescript": "5.9.3"
+  }
+}
