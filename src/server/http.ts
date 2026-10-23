@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { controlFrame, positiveInteger, ResyncError, scopeKey } from '../protocol.js';
+import { controlFrame, timerDuration, ResyncError, scopeKey } from '../protocol.js';
 import { MemoryEventStore, type HistorySubscription } from './history.js';
 
 export interface NodeRelayOptions {
@@ -13,8 +13,8 @@ export interface NodeRelayOptions {
 }
 /** Reference Node HTTP handler. Routing, TLS, CORS allowlists and production authentication belong to the host. */
 export function createNodeRelay(options: NodeRelayOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
-  const heartbeatMs = positiveInteger(options.heartbeatMs ?? 15000, 'heartbeatMs');
-  const maxDrainWaitMs = positiveInteger(options.maxDrainWaitMs ?? 5000, 'maxDrainWaitMs');
+  const heartbeatMs = timerDuration(options.heartbeatMs ?? 15000, 'heartbeatMs');
+  const maxDrainWaitMs = timerDuration(options.maxDrainWaitMs ?? 5000, 'maxDrainWaitMs');
   return async (request, response) => {
     let subscription: HistorySubscription | undefined;
     let heartbeat: ReturnType<typeof setInterval> | undefined;
@@ -38,8 +38,10 @@ export function createNodeRelay(options: NodeRelayOptions): (request: IncomingMe
         'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' });
       response.flushHeaders();
       heartbeat = setInterval(() => {
-        // Do not append heartbeats behind buffered data: the stream loop owns drain/overflow recovery.
-        if (!response.destroyed && response.writableLength === 0) response.write(': heartbeat\n\n');
+        // The stream loop owns every write, including heartbeat drain deadlines.
+        if (!response.destroyed && response.writableLength === 0 && subscription?.queuedFrames === 0) {
+          subscription.enqueue(': heartbeat\n\n');
+        }
       }, heartbeatMs);
       heartbeat.unref();
       for await (const wire of subscription) {
@@ -53,7 +55,7 @@ export function createNodeRelay(options: NodeRelayOptions): (request: IncomingMe
         const status = error instanceof ResyncError ? 409 : error instanceof TypeError ? 400 : 503;
         response.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
         response.end(JSON.stringify({ reason: error instanceof ResyncError ? error.reason : status === 400 ? 'invalid-request' : 'relay-unavailable' }));
-      } else if (error instanceof ResyncError) {
+      } else if (error instanceof ResyncError && !response.writableNeedDrain) {
         response.end(controlFrame('relay-resync', { reason: error.reason }));
       } else {
         // Once the socket cannot drain, no control frame can be guaranteed. Reconnect validates retention.

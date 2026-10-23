@@ -39,6 +39,12 @@ try {
   await page.waitForFunction(() => window.demo.metrics().value === 26);
   report.scenarios.push('install matching snapshot and cursor, then resume live processing');
 
+  await page.reload();
+  await page.getByRole('button', { name: 'Start / reconnect', exact: true }).click();
+  await page.waitForFunction(() => window.demo.metrics().state === 'live' && window.demo.metrics().value === 26);
+  assert.equal(await page.evaluate(() => window.demo.metrics().handled), 0);
+  report.scenarios.push('reload restores matching application snapshot instead of trusting a cursor with empty state');
+
   await page.getByRole('button', { name: 'Logout / clear cursor', exact: true }).click();
   await page.waitForFunction(() => window.demo.metrics().state === 'closed' && window.demo.metrics().cursor === null);
   const before = await page.evaluate(() => window.demo.metrics().connections.length);

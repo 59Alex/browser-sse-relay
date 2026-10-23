@@ -26,6 +26,12 @@ export function positiveInteger(value: number, name: string, allowZero = false):
   if (!Number.isSafeInteger(value) || value < (allowZero ? 0 : 1)) throw new TypeError(`Invalid ${name}`);
   return value;
 }
+/** Portable setTimeout/setInterval range; larger values can become an almost immediate timeout. */
+export function timerDuration(value: number, name: string, allowZero = false): number {
+  positiveInteger(value, name, allowZero);
+  if (value > 2147483647) throw new TypeError(`${name} exceeds the supported timer range`);
+  return value;
+}
 export class ResyncError extends Error {
   constructor(readonly reason: string) { super(reason); this.name = 'ResyncError'; }
 }

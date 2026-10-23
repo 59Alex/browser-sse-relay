@@ -43,6 +43,23 @@ npm run test:package
 npm install /path/to/59alex-browser-sse-relay-0.1.0.tgz
 ```
 
+## Minimal client
+
+```ts
+import { SseRelayClient, MemoryCheckpointStore } from '@59alex/browser-sse-relay';
+
+const client = new SseRelayClient({
+  scope: { accountId: 'authenticated-account', streamId: 'notifications' },
+  url: '/api/events',
+  checkpoint: new MemoryCheckpointStore(),
+  async onEvent(event) { console.log(event.id, event.data); },
+});
+void client.start().then(result => console.log(result.state, result.reason));
+// On application teardown: client.stop();
+```
+
+The endpoint must implement protocol v1, and scope must match the authenticated account. Effects may repeat if checkpointing fails; make real handlers idempotent. A persisted cursor requires corresponding application state or snapshot recovery.
+
 See [the English guide](docs/v0.1.0/guide.en.md), [русское руководство](docs/v0.1.0/guide.ru.md), [protocol](docs/PROTOCOL.md), and [verification record](docs/VERIFICATION.md).
 
 ## Language and runtime
@@ -97,6 +114,23 @@ npm run test:package
 # Создаёт output/59alex-browser-sse-relay-0.1.0.tgz и проверяет чистый consumer.
 npm install /path/to/59alex-browser-sse-relay-0.1.0.tgz
 ```
+
+## Минимальный клиент
+
+```ts
+import { SseRelayClient, MemoryCheckpointStore } from '@59alex/browser-sse-relay';
+
+const client = new SseRelayClient({
+  scope: { accountId: 'authenticated-account', streamId: 'notifications' },
+  url: '/api/events',
+  checkpoint: new MemoryCheckpointStore(),
+  async onEvent(event) { console.log(event.id, event.data); },
+});
+void client.start().then(result => console.log(result.state, result.reason));
+// On application teardown: client.stop();
+```
+
+Endpoint должен реализовать протокол v1, а scope — соответствовать авторизованному аккаунту. При ошибке checkpoint эффект может повториться; реальные обработчики должны быть идемпотентными. Для сохранённого курсора нужно соответствующее состояние приложения или восстановление snapshot.
 
 См. [русское руководство](docs/v0.1.0/guide.ru.md), [English guide](docs/v0.1.0/guide.en.md), [протокол](docs/PROTOCOL.md) и [результаты проверок](docs/VERIFICATION.md).
 

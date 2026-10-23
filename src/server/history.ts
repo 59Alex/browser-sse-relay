@@ -47,7 +47,7 @@ export class HistorySubscription implements AsyncIterable<string> {
   }
   close(): void {
     if (this.closed) return;
-    this.closed = true; this.queue.end(); this.detach(); this.listeners.clear();
+    this.closed = true; this.queue.end(true); this.detach(); this.listeners.clear();
   }
   [Symbol.asyncIterator](): AsyncIterator<string> {
     return { next: () => this.queue.next(), return: async () => { this.close(); return { done: true, value: undefined }; } };
@@ -92,8 +92,13 @@ export class MemoryEventStore {
   /** Atomically capture replay and register for all later events; no await occurs in this operation. */
   subscribe(scope: StreamScope, cursor?: string): HistorySubscription {
     this.prune();
-    const stream = this.getStream(scope);
-    const after = cursor === undefined ? stream.origin : validateCursor(cursor);
+    const key = scopeKey(scope);
+    const existing = this.streams.get(key);
+    const supplied = cursor === undefined ? undefined : validateCursor(cursor);
+    if (supplied !== undefined && !existing) throw new ResyncError('cursor-unavailable');
+    if (this.subscribers >= this.options.maxSubscribers) throw new Error('Subscriber capacity reached');
+    const stream = existing ?? this.createStream(scope);
+    const after = supplied ?? stream.origin;
     let index: number;
     if (after === stream.floor) index = 0;
     else {
@@ -101,7 +106,6 @@ export class MemoryEventStore {
       if (found < 0) throw new ResyncError('cursor-unavailable');
       index = found + 1;
     }
-    if (this.subscribers >= this.options.maxSubscribers) throw new Error('Subscriber capacity reached');
     const frames = [controlFrame('relay-hello', { protocol: 1, scope: stream.scope, after, watermark: stream.head }),
       ...stream.history.slice(index).map(event => event.wire),
       controlFrame('relay-ready', { scope: stream.scope, watermark: stream.head })];
@@ -112,6 +116,7 @@ export class MemoryEventStore {
     const subscription = new HistorySubscription(stream.head, after, queue, () => {
       if (stream.subscriptions.delete(subscription)) this.subscribers--;
     });
+    if (!existing) this.streams.set(key, stream);
     stream.subscriptions.add(subscription); this.subscribers++;
     for (const frame of frames) subscription.enqueue(frame);
     return subscription;
@@ -132,12 +137,15 @@ export class MemoryEventStore {
     const key = scopeKey(scope);
     let stream = this.streams.get(key);
     if (!stream) {
-      if (this.streams.size >= this.options.maxStreams) throw new Error('Stream capacity reached');
-      const origin = randomUUID();
-      stream = { scope: Object.freeze({ ...scope }), origin, floor: origin, head: origin, history: [], subscriptions: new Set() };
+      stream = this.createStream(scope);
       this.streams.set(key, stream);
     }
     return stream;
+  }
+  private createStream(scope: StreamScope): Stream {
+    if (this.streams.size >= this.options.maxStreams) throw new Error('Stream capacity reached');
+    const origin = randomUUID();
+    return { scope: Object.freeze({ ...scope }), origin, floor: origin, head: origin, history: [], subscriptions: new Set() };
   }
   private evict(stream: Stream): void {
     const event = stream.history.shift();

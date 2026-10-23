@@ -120,3 +120,92 @@ test('slow awaited handlers overflow the bounded client queue on an actual HTTP 
   for (let i = 0; i < 20; i++) relay.store.append(scope, String(i));
   const result = await running; assert.equal(result.state, 'resync'); assert.equal(result.reason, 'client-queue-overflow');
 });
+
+test('close and disconnect discard unread frames and detach subscriptions immediately', async () => {
+  for (const disconnect of [false, true]) {
+    const store = new MemoryEventStore(); store.append(scope, 'retained');
+    const sub = store.subscribe(scope);
+    assert.ok(sub.queuedFrames > 0); assert.ok(sub.queuedBytes > 0);
+    if (disconnect) store.disconnect(scope); else sub.close();
+    assert.equal(sub.queuedFrames, 0); assert.equal(sub.queuedBytes, 0);
+    assert.equal(store.stats().subscribers, 0);
+    assert.equal((await sub[Symbol.asyncIterator]().next()).done, true);
+    assert.equal(store.stats().retainedEvents, 1);
+  }
+});
+
+// Controlled socket backpressure: unlike OS send-buffer saturation this has a deterministic boundary.
+async function blockedResponse(t, { blockOnHeartbeat = false, overflow = false } = {}) {
+  const { EventEmitter } = await import('node:events');
+  const { createNodeRelay } = await import('../dist/server/index.js');
+  const store = new MemoryEventStore({ maxQueuedFrames: 3 });
+  const response = new EventEmitter();
+  Object.assign(response, { destroyed: false, headersSent: false, writableLength: 0, writableNeedDrain: false,
+    writeHead() { this.headersSent = true; return this; }, flushHeaders() {},
+    write(wire) {
+      if (blockOnHeartbeat && !wire.startsWith(': heartbeat')) return true;
+      this.writableLength = wire.length; this.writableNeedDrain = true;
+      if (overflow) queueMicrotask(() => { for (let i = 0; i < 8; i++) store.append(scope, String(i)); });
+      return false;
+    },
+    end() { this.ended = true; },
+    destroy() { this.destroyed = true; this.emit('close'); },
+  });
+  const handler = createNodeRelay({ store, authenticate: () => scope.accountId, stream: () => scope.streamId,
+    heartbeatMs: 5, maxDrainWaitMs: 15 });
+  const fallback = setTimeout(() => response.emit('close'), 100);
+  t.after(() => clearTimeout(fallback));
+  await handler({ method: 'GET', headers: {} }, response);
+  clearTimeout(fallback);
+  assert.equal(response.destroyed, true, 'an undrainable response must be destroyed');
+  assert.equal(store.stats().subscribers, 0);
+  assert.equal(response.listenerCount('drain'), 0); assert.equal(response.listenerCount('close'), 0);
+}
+test('heartbeat-only socket backpressure observes the same drain deadline', t => blockedResponse(t, { blockOnHeartbeat: true }));
+test('queue overflow while socket is blocked destroys it instead of appending an undeliverable resync', t => blockedResponse(t, { overflow: true }));
+
+test('rejected subscriptions do not consume previously unused stream capacity', () => {
+  for (const limits of [{ maxQueuedFrames: 1 }, { maxQueuedBytes: 1 }]) {
+    const tooSmall = new MemoryEventStore(limits);
+    assert.throws(() => tooSmall.subscribe(scope), ResyncError);
+    assert.equal(tooSmall.stats().streams, 0);
+  }
+  const store = new MemoryEventStore({ maxStreams: 2, maxSubscribers: 1 });
+  const other = { ...scope, streamId: 'unowned' };
+  assert.throws(() => store.subscribe(other, 'foreign-cursor'), ResyncError);
+  assert.throws(() => store.subscribe(other, 'invalid cursor'), TypeError);
+  assert.equal(store.stats().streams, 0);
+  const active = store.subscribe(scope);
+  assert.throws(() => store.subscribe(other), /Subscriber capacity/);
+  assert.equal(store.stats().streams, 1);
+  active.close();
+  const admitted = store.subscribe(other); admitted.close();
+  assert.equal(store.stats().streams, 2);
+});
+
+test('server timer options reject platform timer overflow', async () => {
+  const { createNodeRelay } = await import('../dist/server/index.js');
+  const options = { store: new MemoryEventStore(), authenticate: () => scope.accountId, stream: () => scope.streamId };
+  for (const extra of [{ heartbeatMs: 2 ** 31 }, { maxDrainWaitMs: 2 ** 31 }]) {
+    assert.throws(() => createNodeRelay({ ...options, ...extra }), /timer range/);
+  }
+});
+
+test('real HTTP authorization denies streams before allocation and query account cannot change scope', async t => {
+  const store = new MemoryEventStore();
+  const relay = await relayServer(store, { authorize: (account, stream) => account === scope.accountId && stream === scope.streamId });
+  t.after(() => relay.close());
+  const headers = { Authorization: 'Bearer valid' };
+  const denied = await fetch(relay.url + '?stream=private&accountId=other', { headers });
+  assert.equal(denied.status, 403); await denied.body?.cancel();
+  assert.equal(store.stats().streams, 0); assert.equal(store.stats().subscribers, 0);
+  const allowed = await fetch(relay.url + '?accountId=other', { headers });
+  assert.equal(allowed.status, 200);
+  const reader = allowed.body.getReader();
+  try {
+    const first = await reader.read();
+    const frames = decode([new TextDecoder().decode(first.value)]);
+    assert.deepEqual(JSON.parse(frames[0].data).scope, scope);
+  } finally { await reader.cancel(); reader.releaseLock(); }
+  await until(() => store.stats().subscribers === 0);
+});

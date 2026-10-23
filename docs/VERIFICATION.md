@@ -8,9 +8,9 @@ Local verification on 2026-10-24 used Linux, Node 24.21.0, npm 11.19.0, TypeScri
 
 | Check | Actual result |
 |---|---|
-| `npm test` | 30 passing Node tests; no failures or skipped tests. |
-| `npm run test:browser` | Headless Chromium 156.0.8078.4; six scenarios passed; no uncaught page exceptions. |
-| `npm run test:package` | Tarball installed in a fresh temporary consumer; browser/server exports, declarations and EN/RU guide snippets checked; actual HTTP event handled and checkpointed. |
+| `npm test` | 40 passing Node tests; no failures or skipped tests. |
+| `npm run test:browser` | Headless Chromium 156.0.8078.4; seven scenarios passed; no uncaught page exceptions. |
+| `npm run test:package` | Tarball installed in a fresh temporary consumer; browser/server exports, declarations and EN/RU README/guide snippets checked; actual HTTP event handled and checkpointed. |
 
 Node tests cover fragmented UTF-8, BOM, CR/LF/CRLF, multiline data, comments, retry fields, truncated frames, exact byte limits, Unicode metadata accounting, handler/checkpoint failures, logout with pending work, token refresh, retry cancellation, timeouts, malformed controls, deduplication bounds, scope isolation, concurrent publication, atomic replay/live ordering, retention boundaries, slow consumers and real HTTP reconnect.
 
@@ -21,9 +21,24 @@ The browser scenarios verify:
 3. Handler effect repeated after a deliberately failed checkpoint.
 4. Offline retention expiry producing terminal resync.
 5. Applying a consistent counter snapshot and resuming subsequent events.
-6. Logout clearing the scoped checkpoint and preventing further delivery.
+6. Page reload restoring a matching application snapshot before using a persisted cursor.
+7. Logout clearing the scoped checkpoint and preventing further delivery.
 
 The two relay listeners share the same MemoryEventStore object. This checks transport handoff in one process; it is not evidence for a durable distributed store.
+
+## Independent source review (OSS-007)
+
+Regression tests reproduced these failures before correction:
+
+- EOF left the byte-idle timer active while a slow handler drained already-received events; the timeout discarded backlog.
+- An application frame could run after the replay watermark but before relay-ready. It now fails before that frame's handler or checkpoint.
+- Stopping a never-started client retained its listener on an external AbortSignal.
+- Closing/disconnecting a reference subscription left unread queue frames retained and readable.
+- Heartbeats bypassed the socket drain deadline; queue overflow could append a resync to an already blocked socket instead of destroying it.
+- Rejected subscriptions allocated previously unused scopes and consumed maxStreams.
+- Timer values beyond 2,147,483,647 ms were accepted even though the platform clamps them to an unsafe short timeout.
+
+The browser regression also checks the previous demo reload bug: persisted cursor plus reset in-memory counter. The demo now installs a matching snapshot; the guide uses a memory checkpoint for memory-only state and explains persistent-state ownership. README and guide snippets compile against the packed artifact. Markdown links, explicit anchors and package-local documentation targets were checked. The repository has no Pages documentation workflow or website URL; the functional demo is retained.
 
 ## Reproduce
 

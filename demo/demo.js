@@ -21,6 +21,10 @@ const checkpoint = {
 };
 async function stop() { if (session) { session.stop(); await session.start(); } }
 async function start(initialCursor) {
+  // A persisted cursor alone cannot restore this page's in-memory counter after reload.
+  if (!session && initialCursor === undefined && await storage.load(config.scope, new AbortController().signal) !== undefined) {
+    await snapshotAndResume(); return;
+  }
   await stop();
   const current = ++generation;
   session = new SseRelayClient({
@@ -76,7 +80,13 @@ const actions = {
   expire: expireHistory, snapshot: snapshotAndResume, logout,
 };
 for (const [id, action] of Object.entries(actions)) {
-  element(id).addEventListener('click', () => { void action().catch(error => log(`ERROR ${error.message}`)); });
+  element(id).addEventListener('click', async () => {
+    // Do not start overlapping owners of one checkpoint while an earlier UI action awaits I/O.
+    for (const name of Object.keys(actions)) element(name).disabled = true;
+    try { await action(); }
+    catch (error) { log(`ERROR ${error.message}`); }
+    finally { for (const name of Object.keys(actions)) element(name).disabled = false; }
+  });
 }
 window.demo = { metrics: () => ({ value, handled, duplicates, state: session?.state ?? 'idle', cursor: session?.committedCursor ?? null,
   lastResult, connections: [...connections], scope: config.scope }), snapshotAndResume, expireHistory, logout };

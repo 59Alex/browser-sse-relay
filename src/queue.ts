@@ -26,7 +26,9 @@ export class BoundedQueue<T> {
     if (this.waiter) return Promise.reject(new Error('Only one queue consumer is supported'));
     return new Promise((resolve, reject) => { this.waiter = { resolve, reject }; });
   }
-  end(): void {
+  /** EOF drains queued work; explicit subscription closure discards it. */
+  end(discardQueued = false): void {
+    if (discardQueued) { this.items = []; this.bytes = 0; }
     this.ended = true;
     if (this.waiter) { this.waiter.resolve({ done: true, value: undefined }); this.waiter = undefined; }
   }

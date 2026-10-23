@@ -199,3 +199,47 @@ test('stop from a state observer prevents new URL and token-refresh callbacks', 
     assert.equal(refreshes, 0);
   }
 });
+
+test('EOF cancels the byte-idle timer while received events finish processing', async () => {
+  const seen = []; let calls = 0;
+  const client = new SseRelayClient(options({ idleTimeoutMs: 10,
+    onEvent: async value => { seen.push(value.id); await sleep(30); },
+    fetch: async () => ++calls === 1 ? sse(hello('origin', 'e2') + event('e1') + event('e2') + ready('e2'))
+      : new Response(null, { status: 204 }),
+  }));
+  const result = await client.start();
+  assert.deepEqual(seen, ['e1', 'e2']); assert.equal(result.cursor, 'e2');
+});
+
+test('no application event is handled between the replay watermark and relay-ready', async () => {
+  for (const replay of [false, true]) {
+    const seen = [];
+    const client = new SseRelayClient(options({
+      onEvent: value => { seen.push(value.id); },
+      fetch: async () => sse((replay ? hello('origin', 'e1') + event('e1') : hello()) + event('too-early')),
+    }));
+    const result = await client.start();
+    assert.equal(result.reason, 'protocol-error');
+    assert.deepEqual(seen, replay ? ['e1'] : []);
+    assert.equal(result.cursor, replay ? 'e1' : undefined);
+  }
+});
+
+test('stop detaches the external signal even when start was never called', async () => {
+  const { getEventListeners } = await import('node:events');
+  const external = new AbortController();
+  const client = new SseRelayClient(options({ signal: external.signal }));
+  assert.equal(getEventListeners(external.signal, 'abort').length, 1);
+  client.stop(); client.stop();
+  assert.equal(getEventListeners(external.signal, 'abort').length, 0);
+});
+
+test('timer options reject values that setTimeout would clamp to near-zero', () => {
+  const overflow = 2 ** 31;
+  for (const extra of [{ connectTimeoutMs: overflow }, { idleTimeoutMs: overflow },
+    { retry: { maxDelayMs: overflow } }, { retry: { minDelayMs: overflow, maxDelayMs: overflow } }]) {
+    assert.throws(() => new SseRelayClient(options(extra)), /timer range/);
+  }
+  const allowed = new SseRelayClient(options({ connectTimeoutMs: overflow - 1, idleTimeoutMs: overflow - 1 }));
+  allowed.stop();
+});

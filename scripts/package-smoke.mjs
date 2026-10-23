@@ -63,6 +63,11 @@ try {
   await writeFile(join(consumer, 'guide-browser.ts'), [snippets[0], snippets[1], snippets[2], snippets[3], snippets[5]].join('\n'));
   await writeFile(join(consumer, 'guide-server.ts'), snippets[4]);
   run(process.execPath, [resolve('node_modules/typescript/bin/tsc'), '--noEmit', '--strict', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--lib', 'ES2022,DOM', 'guide-browser.ts', 'guide-server.ts'], consumer);
+  const readmeSnippets = blocks(await readFile('README.md', 'utf8'));
+  assert.equal(readmeSnippets.length, 2);
+  assert.equal(readmeSnippets[0], readmeSnippets[1], 'README EN/RU examples must match');
+  await writeFile(join(consumer, 'readme.ts'), readmeSnippets[0]);
+  run(process.execPath, [resolve('node_modules/typescript/bin/tsc'), '--noEmit', '--strict', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--lib', 'ES2022,DOM', 'readme.ts'], consumer);
   const result = run(process.execPath, ['consumer.mjs'], consumer);
   await writeFile('output/package-smoke.json', JSON.stringify({ package: packed.filename, bytes: packed.size, unpackedBytes: packed.unpackedSize, files: packed.files.map(file => file.path), result: result.trim() }, null, 2) + '\n');
   console.log(JSON.stringify({ package: packed.filename, bytes: packed.size, unpackedBytes: packed.unpackedSize, result: result.trim() }, null, 2));

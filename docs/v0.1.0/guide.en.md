@@ -44,10 +44,10 @@ The package smoke test creates a clean consumer, checks both export paths and Ty
 Browser example for a counter stream. The endpoint must emit protocol v1 controls and JSON application payloads containing a numeric value. The scope must identify the authenticated account, not a user-entered arbitrary account ID.
 
 ```ts
-import { SseRelayClient, LocalStorageCheckpointStore } from '@59alex/browser-sse-relay';
+import { SseRelayClient, MemoryCheckpointStore } from '@59alex/browser-sse-relay';
 
 const scope = { accountId: 'account-42', streamId: 'counter' };
-const checkpoint = new LocalStorageCheckpointStore(localStorage);
+const checkpoint = new MemoryCheckpointStore();
 let counter = 0;
 
 const options = {
@@ -68,11 +68,13 @@ let client = new SseRelayClient(options);
 const finished = client.start();
 ```
 
+This counter and its checkpoint share the page lifetime. If using LocalStorageCheckpointStore instead, restore the corresponding application state or install a fresh matching snapshot before resuming. A saved cursor alone cannot reconstruct a reset in-memory counter.
+
 The observable sequence is handler completion → checkpoint.save completion → committedCursor update. Until both complete, reconnect uses the previous cursor. If the assignment succeeds and checkpoint storage fails, the same event may run again. Replace the counter example with application-specific idempotency or a transactionally deduplicated effect; a browser checkpoint cannot atomically commit a separate backend side effect.
 
 The duplicate set only covers successfully committed IDs in the current bounded session window. It is not durable. A new session can repeat effects after a crash. Storage errors are surfaced through bounded retries, not ignored.
 
-Without an adapter, the committed cursor exists only in this client instance. For a shared process-local cursor map, substitute MemoryCheckpointStore. For custom persistence, implement load(scope, signal), save(scope, cursor, signal), and clear(scope, signal). Honor cancellation immediately before committing and settle every promise. Do not let two sessions concurrently write the same scope's checkpoint; stop and await logout before reusing that scope. Multi-tab ownership coordination is not included.
+Without an adapter, the committed cursor exists only in this client instance. The example uses MemoryCheckpointStore for a shared process-local cursor map. LocalStorageCheckpointStore persists only the cursor, not application state. For custom persistence, implement load(scope, signal), save(scope, cursor, signal), and clear(scope, signal). Honor cancellation immediately before committing and settle every promise. Do not let two sessions concurrently write the same scope's checkpoint; stop and await logout before reusing that scope. Multi-tab ownership coordination is not included.
 
 <a id="retry-and-authentication"></a>
 ## Retry and authentication
@@ -103,7 +105,7 @@ Use this instead of constructing the preceding client; never start two owners of
 
 Network errors, header/idle timeouts, HTTP 408/429 and 5xx retry with bounded delay and jitter. SSE retry and HTTP Retry-After are clamped to the configured range. Other HTTP failures and invalid protocol controls fail closed. HTTP 204 closes normally; HTTP 409/410 requires resync. Redirects are rejected. For cross-origin use, the server must allow the specific origin and request headers and expose X-Relay-Protocol; the demo shows that host configuration.
 
-A quiet healthy stream needs server comments/heartbeats more frequently than idleTimeoutMs. The timers bound network waits; application handlers, token providers and checkpoint adapters remain responsible for settling their own asynchronous work.
+A quiet healthy stream needs server comments/heartbeats more frequently than idleTimeoutMs. After EOF, the byte-idle timer stops while already-received events finish processing. The timers bound network waits; application handlers, token providers and checkpoint adapters remain responsible for settling their own asynchronous work.
 
 <a id="stop-and-logout"></a>
 ## Stop and logout
@@ -193,9 +195,9 @@ const limitedClient = new SseRelayClient({
 });
 ```
 
-These are the default client limits. Frame limits count wire bytes; queue bytes count UTF-8 data, id and event type. One active handler frame and a bounded parser frame are additional to the queued budget. Browser/OS buffering and application-owned copies are outside this accounting. Queue overflow and oversized frames produce resync, not silent event dropping.
+These are the default client limits. Millisecond timer options (connection, idle, retry, heartbeat and drain) must not exceed 2,147,483,647; reconnect delays may be zero. Frame limits count wire bytes; queue bytes count UTF-8 data, id and event type. One active handler frame and a bounded parser frame are additional to the queued budget. Browser/OS buffering and application-owned copies are outside this accounting. Queue overflow and oversized frames produce resync, not silent event dropping.
 
-Server defaults: 256 retained events per stream, 300 seconds retention, 16 MiB total retained bytes, 64 scopes, 64 subscribers, 1,024 queued frames and 1 MiB per subscriber, 64 KiB per application frame. Subscriber overflow and oversized replay require resync. A socket that cannot drain is closed after five seconds; if its network is already broken, the resync control cannot be guaranteed to arrive, and reconnect revalidates retention.
+Server defaults: 256 retained events per stream, 300 seconds retention, 16 MiB total retained bytes, 64 scopes, 64 subscribers, 1,024 queued frames and 1 MiB per subscriber, 64 KiB per application frame. Subscriber overflow and oversized replay require resync. Explicit subscription close/disconnect discards its queued frames without removing retained history. Heartbeats use the same write/drain loop as application frames. A socket that cannot drain is closed after five seconds; if its network is already broken, the resync control cannot be guaranteed to arrive, and reconnect revalidates retention.
 
 Scope validation is not authorization. The HTTP host authenticates accounts and checks permitted streams. It also owns TLS, allowed origins, resource quotas and consistent snapshots. No transport acknowledgment proves that an application side effect is durable.
 
@@ -221,7 +223,7 @@ npm run test:browser
 npm run test:package
 ```
 
-The browser smoke test runs headless. It checks initial commit, relay B replay after a disconnect, a repeated handler after checkpoint failure, terminal resync on expiry, snapshot recovery, and logout with no stale restart. It writes its browser version and screenshot under output/playwright. The package smoke test installs a tarball into a fresh temporary consumer, type-checks public imports and processes an HTTP event.
+The browser smoke test runs headless. It checks initial commit, relay B replay after a disconnect, a repeated handler after checkpoint failure, terminal resync on expiry, snapshot recovery, page reload with matching state restoration, and logout with no stale restart. It writes its browser version and screenshot under output/playwright. The package smoke test installs a tarball into a fresh temporary consumer, type-checks public imports and processes an HTTP event.
 
 A failure to start the browser usually means its Playwright binary is not installed; run the install command above. A 401 means the host authentication rejected the request. A protocol-error commonly means a missing protocol header/control, wrong scope, malformed frame or invalid replay watermark. A cursor-unavailable result requires a consistent snapshot, not an empty-cursor retry loop. A retry-exhausted result requires an application decision; this client does not reconnect indefinitely.
 

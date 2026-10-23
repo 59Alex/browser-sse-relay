@@ -2,7 +2,7 @@ import type { EventSourceMessage } from 'eventsource-parser';
 import type { CheckpointStore } from './checkpoint.js';
 import { createWireParser } from './parser.js';
 import { BoundedQueue } from './queue.js';
-import { encoder, positiveInteger, ProtocolError, ResyncError, sameScope, scopeKey, validateCursor,
+import { encoder, positiveInteger, timerDuration, ProtocolError, ResyncError, sameScope, scopeKey, validateCursor,
   type RelayEvent, type StreamScope } from './protocol.js';
 
 export type RelayState = 'idle' | 'connecting' | 'replaying' | 'live' | 'waiting' | 'authenticating' | 'resync' | 'failed' | 'closed';
@@ -63,11 +63,11 @@ export class SseRelayClient {
     this.limits = { maxFrameBytes: 65536, maxQueuedEvents: 128, maxQueuedBytes: 1048576, dedupEntries: 1024, ...options.limits };
     this.retry = { maxAttempts: 8, minDelayMs: 250, maxDelayMs: 10000, jitter: 0.2, ...options.retry };
     for (const [key, value] of Object.entries(this.limits)) positiveInteger(value, key, key === 'dedupEntries');
-    positiveInteger(options.connectTimeoutMs ?? 10000, 'connectTimeoutMs');
-    positiveInteger(options.idleTimeoutMs ?? 45000, 'idleTimeoutMs');
+    timerDuration(options.connectTimeoutMs ?? 10000, 'connectTimeoutMs');
+    timerDuration(options.idleTimeoutMs ?? 45000, 'idleTimeoutMs');
     positiveInteger(this.retry.maxAttempts, 'maxAttempts');
-    positiveInteger(this.retry.minDelayMs, 'minDelayMs', true);
-    positiveInteger(this.retry.maxDelayMs, 'maxDelayMs', true);
+    timerDuration(this.retry.minDelayMs, 'minDelayMs', true);
+    timerDuration(this.retry.maxDelayMs, 'maxDelayMs', true);
     if (this.retry.maxDelayMs < this.retry.minDelayMs || this.retry.jitter < 0 || this.retry.jitter > 1 || !Number.isFinite(this.retry.jitter)) {
       throw new TypeError('Invalid retry range');
     }
@@ -88,7 +88,13 @@ export class SseRelayClient {
     return this.runPromise;
   }
   /** Stops transport and future callbacks. A running handler must cooperate with its signal. */
-  stop(): void { this.controller.abort(); }
+  stop(): void {
+    this.controller.abort();
+    if (this.options.signal && this.externalAbort) {
+      this.options.signal.removeEventListener('abort', this.externalAbort);
+      this.externalAbort = undefined;
+    }
+  }
   /** Waits for in-flight work to settle, then removes this account/stream checkpoint. Await before reusing its scope. */
   async logout(): Promise<void> {
     this.stop();
@@ -242,6 +248,7 @@ export class SseRelayClient {
         }
         queue.end();
       } catch (error) { queue.fail(error); }
+      finally { clearTimeout(idleTimer); }
     })();
     let hello = false, ready = false, watermark = '', lastReceived = '';
     try {
@@ -274,6 +281,7 @@ export class SseRelayClient {
           throw new ProtocolError('Unknown relay control');
         }
         if (!hello) throw new ProtocolError('Application event before hello');
+        if (!ready && lastReceived === watermark) throw new ProtocolError('Application event before replay-ready boundary');
         const id = protocolCursor(frame.id);
         if (!type || type.length > 128 || /[\r\n\u0000]/u.test(type)) throw new ProtocolError('Invalid event type');
         lastReceived = id;
