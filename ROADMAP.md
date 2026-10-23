@@ -1,5 +1,7 @@
 # Implementation plan
 
+[← Back to repository README / Назад к README библиотеки](README.md)
+
 Deliver recoverable SSE semantics with a runnable failure demo.
 
 Source implementation 0.1.0 is locally tested. Checked items describe implemented and locally verified behavior, not npm publication. [Verification record](docs/VERIFICATION.md).
@@ -44,3 +46,5 @@ Source implementation 0.1.0 is locally tested. Checked items describe implemente
 - [ ] Release v0.1 after publication and integration gates pass.
 
 A Java/WebFlux library is a later deliverable only if the reference implementation proves a stable reusable boundary.
+
+[← Back to repository README / Назад к README библиотеки](README.md)

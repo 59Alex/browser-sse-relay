@@ -1,5 +1,7 @@
 # Recovery protocol v1
 
+[← Back to documentation and versions / Назад к документации и версиям](index.md)
+
 ## Scope and ordering
 
 A stream is identified by the pair `{ accountId, streamId }`. Cursors are opaque, nonempty printable-ASCII strings (1..1024 characters, no spaces) and valid only for that pair. The server authenticates the account; a request cannot select another account by a query parameter. The client verifies the server's scope before invoking application handlers. A cursor is not an authorization credential.
@@ -49,3 +51,5 @@ Two Node relay instances can share the same MemoryEventStore object. This demons
 Retention is bounded by event count, age, total retained bytes, and number of scopes. Subscriber count, queued events/bytes, event size, and socket-drain wait are also bounded. A subscription that cannot replay or keep up reports resync. If the network is already broken, a control frame may not arrive; reconnect still resumes from the committed cursor and revalidates retention.
 
 Client limits cover raw frame size, parsed queue count and UTF-8 bytes (data, id, and event type), and duplicate history. One active handler frame and one bounded parser frame are additional to queued frames. Browser/OS fetch buffering and application-owned payload copies are outside the library's accounting. Oversized frames and queue overflow stop with an explicit resync result instead of dropping an event silently.
+
+[← Back to documentation and versions / Назад к документации и версиям](index.md)

@@ -27,11 +27,11 @@
   "files": [
     "dist",
     "README.md",
-    "README.ru.md",
     "ROADMAP.md",
     "LICENSE",
     "CHANGELOG.md",
-    "docs"
+    "docs",
+    "assets/lang-*.svg"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

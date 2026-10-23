@@ -1,5 +1,7 @@
 # Changelog
 
+[← Back to repository README / Назад к README библиотеки](README.md)
+
 ## 0.1.0 — 2026-10-24
 
 Initial source implementation; npm publication is pending.
@@ -12,3 +14,5 @@ Initial source implementation; npm publication is pending.
 - Document version 0.1.0 in English and Russian, including TypeScript 5.9.3, ES2022 output, runtime requirements and reliability limits.
 
 No durable distributed store, cross-tab ownership coordination or production application integration is included.
+
+[← Back to repository README / Назад к README библиотеки](README.md)

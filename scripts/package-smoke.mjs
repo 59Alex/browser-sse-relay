@@ -12,7 +12,7 @@ const [packed] = JSON.parse(run('npm', ['pack', '--ignore-scripts', '--json', '-
 assert.equal(packed.name, '@59alex/browser-sse-relay');
 assert.ok(packed.files.some(file => file.path === 'dist/index.d.ts'));
 assert.ok(packed.files.some(file => file.path === 'dist/server/index.d.ts'));
-for (const doc of ['README.md', 'README.ru.md', 'ROADMAP.md', 'docs/README.md', 'docs/v0.1.0/guide.en.md', 'docs/v0.1.0/guide.ru.md']) {
+for (const doc of ['README.md', 'ROADMAP.md', 'docs/index.md', 'docs/v0.1.0/guide.en.md', 'docs/v0.1.0/guide.ru.md']) {
   assert.ok(packed.files.some(file => file.path === doc), `Missing packaged documentation: ${doc}`);
 }
 assert.ok(!packed.files.some(file => /(^|\/)(node_modules|test|demo|output|\.git)(\/|$)/u.test(file.path)));

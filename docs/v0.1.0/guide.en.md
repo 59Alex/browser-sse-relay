@@ -1,6 +1,8 @@
 # browser-sse-relay 0.1.0 — guide
 
-[English](guide.en.md) · [Русский](guide.ru.md) · [Version index](../README.md) · [Repository README](../../README.md)
+[← Back to documentation and versions / Назад к документации и версиям](../index.md)
+
+[English](guide.en.md) · [Русский](guide.ru.md) · [Version index](../index.md) · [Repository README](../../README.md)
 
 ## Overview
 
@@ -224,3 +226,5 @@ The browser smoke test runs headless. It checks initial commit, relay B replay a
 A failure to start the browser usually means its Playwright binary is not installed; run the install command above. A 401 means the host authentication rejected the request. A protocol-error commonly means a missing protocol header/control, wrong scope, malformed frame or invalid replay watermark. A cursor-unavailable result requires a consistent snapshot, not an empty-cursor retry loop. A retry-exhausted result requires an application decision; this client does not reconnect indefinitely.
 
 Remaining release gates: npm authentication/name ownership, registry publication, production application integration, and additional browser coverage. [Verification record](../VERIFICATION.md) and [roadmap](../../ROADMAP.md) distinguish tested source from published artifacts.
+
+[← Back to documentation and versions / Назад к документации и версиям](../index.md)

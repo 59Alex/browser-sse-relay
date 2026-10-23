@@ -1,6 +1,8 @@
 # Documentation / Документация
 
-[README EN](../README.md) · [README RU](../README.ru.md)
+[← Back to repository README / Назад к README библиотеки](../README.md)
+
+[README · EN / RU](../README.md)
 
 Choose a library version and language. These guides are Markdown files in this repository, not a separate documentation website.
 
@@ -18,3 +20,5 @@ Choose a library version and language. These guides are Markdown files in this r
 The browser failure demo is an executable example for protocol behavior, not the documentation delivery format.
 
 Браузерное демо отказов — исполняемый пример поведения протокола, а не формат размещения документации.
+
+[← Back to repository README / Назад к README библиотеки](../README.md)

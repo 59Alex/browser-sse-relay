@@ -1,6 +1,8 @@
 # Verification record — 0.1.0
 
-[Documentation index](README.md) · [English guide](v0.1.0/guide.en.md) · [Русское руководство](v0.1.0/guide.ru.md)
+[← Back to documentation and versions / Назад к документации и версиям](index.md)
+
+[Documentation index](index.md) · [English guide](v0.1.0/guide.en.md) · [Русское руководство](v0.1.0/guide.ru.md)
 
 Local verification on 2026-10-24 used Linux, Node 24.21.0, npm 11.19.0, TypeScript 5.9.3 and Playwright 1.64.1. Java versions do not apply to this TypeScript package.
 
@@ -40,3 +42,5 @@ Browser evidence is generated under `output/playwright/`; package evidence under
 ES2022 ESM output requires streaming fetch, ReadableStream, TextDecoder, Headers and AbortController. The reference server and development tools require Node 22.12+. CI is configured for Node 22.12.0 and 24, but no remote CI result is claimed by this local record. Firefox, WebKit, other browser versions and the Node 22 runtime have not been tested locally.
 
 Registry authentication, ownership of the npm name, actual npm publication and production application integration remain open. A production durable history adapter, cross-tab single-writer coordination and a broader browser matrix are separate work. See [ROADMAP](../ROADMAP.md).
+
+[← Back to documentation and versions / Назад к документации и версиям](index.md)
