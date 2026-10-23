@@ -31,7 +31,7 @@ The Node reference server and development tools require Node 22.12+. Local verif
 npm ci
 npm test
 npm run test:package
-npm install /path/to/output/browser-sse-relay-0.1.0.tgz
+npm install /path/to/output/59alex-browser-sse-relay-0.1.0.tgz
 ```
 
 The package smoke test creates a clean consumer, checks both export paths and TypeScript declarations, and processes an actual HTTP SSE event. It does not publish to npm. Registry credentials and package-name ownership still need verification before release.
@@ -42,7 +42,7 @@ The package smoke test creates a clean consumer, checks both export paths and Ty
 Browser example for a counter stream. The endpoint must emit protocol v1 controls and JSON application payloads containing a numeric value. The scope must identify the authenticated account, not a user-entered arbitrary account ID.
 
 ```ts
-import { SseRelayClient, LocalStorageCheckpointStore } from 'browser-sse-relay';
+import { SseRelayClient, LocalStorageCheckpointStore } from '@59alex/browser-sse-relay';
 
 const scope = { accountId: 'account-42', streamId: 'counter' };
 const checkpoint = new LocalStorageCheckpointStore(localStorage);
@@ -60,7 +60,7 @@ const options = {
     }
     counter = payload.value; // Repeating this assignment is idempotent.
   },
-} satisfies import('browser-sse-relay').RelayOptions;
+} satisfies import('@59alex/browser-sse-relay').RelayOptions;
 
 let client = new SseRelayClient(options);
 const finished = client.start();
@@ -92,7 +92,7 @@ const authentication = {
   retry: { maxAttempts: 8, minDelayMs: 250, maxDelayMs: 10000, jitter: 0.2 },
   connectTimeoutMs: 10000,
   idleTimeoutMs: 45000,
-} satisfies Partial<import('browser-sse-relay').RelayOptions>;
+} satisfies Partial<import('@59alex/browser-sse-relay').RelayOptions>;
 
 client = new SseRelayClient({ ...options, ...authentication });
 ```
@@ -154,7 +154,7 @@ This Node example starts two listeners sharing one object. The fixed bearer valu
 
 ```ts
 import { createServer } from 'node:http';
-import { MemoryEventStore, createNodeRelay } from 'browser-sse-relay/server';
+import { MemoryEventStore, createNodeRelay } from '@59alex/browser-sse-relay/server';
 
 const store = new MemoryEventStore({ maxEventsPerStream: 256, retentionMs: 300000 });
 const scope = { accountId: 'demo-account', streamId: 'counter' };

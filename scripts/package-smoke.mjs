@@ -9,7 +9,7 @@ const run = (command, args, cwd = root) => execFileSync(command, args, { cwd, en
 run('npm', ['run', 'build']);
 await mkdir('output', { recursive: true });
 const [packed] = JSON.parse(run('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', 'output']));
-assert.equal(packed.name, 'browser-sse-relay');
+assert.equal(packed.name, '@59alex/browser-sse-relay');
 assert.ok(packed.files.some(file => file.path === 'dist/index.d.ts'));
 assert.ok(packed.files.some(file => file.path === 'dist/server/index.d.ts'));
 for (const doc of ['README.md', 'README.ru.md', 'ROADMAP.md', 'docs/README.md', 'docs/v0.1.0/guide.en.md', 'docs/v0.1.0/guide.ru.md']) {
@@ -21,8 +21,8 @@ try {
   await writeFile(join(consumer, 'package.json'), JSON.stringify({ name: 'relay-clean-consumer', private: true, type: 'module' }));
   run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', resolve('output', packed.filename), '@types/node@24.19.2'], consumer);
   await writeFile(join(consumer, 'consumer.ts'), `
-import { SseRelayClient, MemoryCheckpointStore, type StreamScope, type RelayOptions } from 'browser-sse-relay';
-import { MemoryEventStore, createNodeRelay } from 'browser-sse-relay/server';
+import { SseRelayClient, MemoryCheckpointStore, type StreamScope, type RelayOptions } from '@59alex/browser-sse-relay';
+import { MemoryEventStore, createNodeRelay } from '@59alex/browser-sse-relay/server';
 const scope: StreamScope = { accountId: 'consumer', streamId: 'events' };
 const options: RelayOptions = { scope, url: 'http://localhost/events', checkpoint: new MemoryCheckpointStore(), onEvent: async event => { event.id.toUpperCase(); } };
 new SseRelayClient(options);
@@ -34,8 +34,8 @@ createNodeRelay({ store, authenticate: () => 'consumer', stream: () => 'events' 
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { SseRelayClient, MemoryCheckpointStore } from 'browser-sse-relay';
-import { MemoryEventStore, createNodeRelay } from 'browser-sse-relay/server';
+import { SseRelayClient, MemoryCheckpointStore } from '@59alex/browser-sse-relay';
+import { MemoryEventStore, createNodeRelay } from '@59alex/browser-sse-relay/server';
 const scope = { accountId: 'consumer', streamId: 'events' };
 const store = new MemoryEventStore();
 const record = store.append(scope, 'hello from packed package');

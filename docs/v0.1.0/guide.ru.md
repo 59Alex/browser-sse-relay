@@ -31,7 +31,7 @@
 npm ci
 npm test
 npm run test:package
-npm install /path/to/output/browser-sse-relay-0.1.0.tgz
+npm install /path/to/output/59alex-browser-sse-relay-0.1.0.tgz
 ```
 
 Проверка пакета создаёт чистый consumer, проверяет оба export path и декларации TypeScript, затем обрабатывает событие через настоящий HTTP SSE. Это не публикация в npm. Перед выпуском ещё нужно подтвердить доступ к npm и владение именем пакета.
@@ -42,7 +42,7 @@ npm install /path/to/output/browser-sse-relay-0.1.0.tgz
 Браузерный пример для потока счётчика. Endpoint должен отправлять управляющие кадры протокола v1 и JSON-события с числовым полем value. Scope должен соответствовать авторизованному аккаунту, а не произвольному идентификатору из пользовательского ввода.
 
 ```ts
-import { SseRelayClient, LocalStorageCheckpointStore } from 'browser-sse-relay';
+import { SseRelayClient, LocalStorageCheckpointStore } from '@59alex/browser-sse-relay';
 
 const scope = { accountId: 'account-42', streamId: 'counter' };
 const checkpoint = new LocalStorageCheckpointStore(localStorage);
@@ -60,7 +60,7 @@ const options = {
     }
     counter = payload.value; // Repeating this assignment is idempotent.
   },
-} satisfies import('browser-sse-relay').RelayOptions;
+} satisfies import('@59alex/browser-sse-relay').RelayOptions;
 
 let client = new SseRelayClient(options);
 const finished = client.start();
@@ -92,7 +92,7 @@ const authentication = {
   retry: { maxAttempts: 8, minDelayMs: 250, maxDelayMs: 10000, jitter: 0.2 },
   connectTimeoutMs: 10000,
   idleTimeoutMs: 45000,
-} satisfies Partial<import('browser-sse-relay').RelayOptions>;
+} satisfies Partial<import('@59alex/browser-sse-relay').RelayOptions>;
 
 client = new SseRelayClient({ ...options, ...authentication });
 ```
@@ -154,7 +154,7 @@ Node-пример запускает два listener, разделяющих о�
 
 ```ts
 import { createServer } from 'node:http';
-import { MemoryEventStore, createNodeRelay } from 'browser-sse-relay/server';
+import { MemoryEventStore, createNodeRelay } from '@59alex/browser-sse-relay/server';
 
 const store = new MemoryEventStore({ maxEventsPerStream: 256, retentionMs: 300000 });
 const scope = { accountId: 'demo-account', streamId: 'counter' };

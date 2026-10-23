@@ -1,5 +1,5 @@
 {
-  "name": "browser-sse-relay",
+  "name": "@59alex/browser-sse-relay",
   "version": "0.1.0",
   "description": "Scoped SSE recovery with commit-after-handler checkpoints and a retained-history reference relay",
   "type": "module",
@@ -7,7 +7,7 @@
   "author": "Aleksandr Kashevarov",
   "repository": {
     "type": "git",
-    "url": "https://github.com/59Alex/browser-sse-relay.git"
+    "url": "git+https://github.com/59Alex/browser-sse-relay.git"
   },
   "engines": {
     "node": ">=22.12"
@@ -48,5 +48,8 @@
     "@types/node": "24.19.2",
     "playwright": "1.64.1",
     "typescript": "5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

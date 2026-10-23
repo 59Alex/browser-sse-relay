@@ -36,8 +36,8 @@ npm run demo
 
 ```sh
 npm run test:package
-# Создаёт output/browser-sse-relay-0.1.0.tgz и проверяет чистый consumer.
-npm install /path/to/browser-sse-relay-0.1.0.tgz
+# Создаёт output/59alex-browser-sse-relay-0.1.0.tgz и проверяет чистый consumer.
+npm install /path/to/59alex-browser-sse-relay-0.1.0.tgz
 ```
 
 См. [русское руководство](docs/v0.1.0/guide.ru.md), [English guide](docs/v0.1.0/guide.en.md), [протокол](docs/PROTOCOL.md) и [результаты проверок](docs/VERIFICATION.md).
